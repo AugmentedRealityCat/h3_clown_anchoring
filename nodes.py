@@ -20,8 +20,9 @@ H3 latent layout (from ComfyUI's comfy/ldm/minimax/model.py):
    Holds the NEXT shot's first `tail_frames` frames at the END of this shot:
    this shot's latents for its last tail_frames frames <- next shot's first latents,
    noise mask 0 there so the sampler keeps them. 39 -> this shot's frames 204-242
-   = next shot's frames 0-38 (12 latents). drop_17_frames holds one block less:
-   39 -> this shot's frames 221-242 = next shot's frames 0-21 (for in-between shots).
+   = next shot's frames 0-38 (12 latents). drop_17_frames (off by default) skips
+   the first block of the overlap: 39 -> this shot's frames 221-242 = next shot's frames 17-38,
+   so the end still lands on the next shot's frame 38 (for in-between shots).
 
 Clown Anchoring keeps any existing noise mask (e.g. the audio mask) and passes
 the latent through unchanged when there is no next-shot latent. If an overlap would
@@ -144,7 +145,7 @@ class H3BlockTailAnchor:
                 "tail_frames": ("INT", {"default": 39, "min": 0, "max": 4096,
                                         "tooltip": "Overlap in frames (use the Audio Splitter overlap, e.g. 39). The whole overlap is held."}),
                 "drop_17_frames": ("BOOLEAN", {"default": False,
-                                               "tooltip": "Hold 17 fewer frames (one block): 39 -> holds the next shot's frames 0-21 in this shot's last 22 frames. For in-between shots."}),
+                                               "tooltip": "Skip the first 17 overlap frames (one block): 39 -> holds the next shot's frames 17-38 in this shot's last 22 frames, so the end still lands on the next shot's frame 38. For in-between shots."}),
             },
             "optional": {
                 "next_shot": ("LATENT", {"tooltip": "Next shot's saved latent (list or packed). If empty, the latent passes through."}),
@@ -171,18 +172,20 @@ class H3BlockTailAnchor:
             )
         T, Ts = video.shape[2], src.shape[2]
         Lt, Ls = _frames_of(T), _frames_of(Ts)
-        requested = int(tail_frames) - (BLOCK if drop_17_frames else 0)
-        if drop_17_frames:
-            print(f"[{who}] drop_17_frames on: holding {requested} frames instead of {tail_frames}")
-        F = _aligned_overlap(requested, Lt)
-        F = min(F, Lt, Ls)
-        if F != requested:
-            print(f"[{who}] overlap {requested} doesn't start on a block boundary - using {F}")
-        n = _latents_in(F)
-        if n == 0:
-            print(f"[{who}] nothing to hold - latent passed through")
+        F_all = min(_aligned_overlap(tail_frames, Lt), Lt, Ls)
+        if F_all != int(tail_frames):
+            print(f"[{who}] overlap {tail_frames} doesn't start on a block boundary - using {F_all}")
+        # drop_17_frames skips the FIRST block (17 frames) of the overlap; the end still lands
+        # on the next shot's last overlap frame. Skipping a whole block keeps positions aligned.
+        skip = BLOCK if drop_17_frames else 0
+        F = F_all - skip
+        n = _latents_in(F_all) - (5 if drop_17_frames else 0)
+        if F <= 0 or n <= 0:
+            print(f"[{who}] nothing to hold (overlap {F_all}, drop_17_frames {drop_17_frames}) - latent passed through")
             return (latent,)
-        d0 = T - n; s0 = 0
+        if drop_17_frames:
+            print(f"[{who}] drop_17_frames on: skipping the first 17 overlap frames, holding the last {F}")
+        d0 = T - n; s0 = 5 * (skip // BLOCK)
         video = video.clone()
         video[:, :, d0:d0 + n] = src[:, :, s0:s0 + n].to(device=video.device, dtype=video.dtype)
         parts[vi] = video
@@ -211,7 +214,7 @@ class H3BlockTailAnchor:
             out["noise_mask"] = masks[0]
 
         df = _frames_of(d0); sf = _frames_of(s0)
-        print(f"[{who}] held latents {d0}..{d0 + n - 1} = frames {df}..{df + F - 1} "
+        print(f"[{who}] held latents {d0}..{d0 + n - 1} = frames {df}..{Lt - 1} "
               f"<- next shot's frames {sf}..{sf + F - 1}")
         return (out,)
 
