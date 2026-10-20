@@ -1,7 +1,7 @@
 [project]
 name = "comfyui-clown-anchoring"
 description = "Clown Anchoring: pin the end of a MiniMax H3 shot to the next shot's real latents, block-aligned, with no flash."
-version = "1.0.0"
+version = "1.0.1"
 
 [project.urls]
 Repository = "https://github.com/roychodraws87/comfyui-clown-anchoring"
