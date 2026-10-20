@@ -144,7 +144,7 @@ class H3BlockTailAnchor:
                 "latent": ("LATENT", {"tooltip": "Starting AV latent that goes into the sampler."}),
                 "tail_frames": ("INT", {"default": 39, "min": 0, "max": 4096,
                                         "tooltip": "Overlap in frames (use the Audio Splitter overlap, e.g. 39). The whole overlap is held."}),
-                "drop_17_frames": ("BOOLEAN", {"default": False,
+                "drop_17_frames": ("BOOLEAN", {"default": True,
                                                "tooltip": "Skip the first 17 overlap frames (one block): 39 -> holds the next shot's frames 17-38 in this shot's last 22 frames, so the end still lands on the next shot's frame 38. For in-between shots."}),
             },
             "optional": {
@@ -152,7 +152,7 @@ class H3BlockTailAnchor:
             },
         }
 
-    def anchor(self, latent, tail_frames, drop_17_frames=False, next_shot=None):
+    def anchor(self, latent, tail_frames, drop_17_frames=True, next_shot=None):
         who = "Clown Anchoring"
         if not _has_samples(next_shot):
             print(f"[{who}] no next shot latent - latent passed through unchanged")
