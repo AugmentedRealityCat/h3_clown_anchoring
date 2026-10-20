@@ -13,7 +13,7 @@ Puts the next shot's first `tail_frames` frames into the end of this shot's star
 |---|---|
 | `latent` | The starting AV latent that goes into the sampler. |
 | `tail_frames` | Overlap in frames. Match your audio overlap; 39 is the usual value. The whole overlap is held. |
-| `drop_17_frames` | **Off by default.** When on, skips the **first** 17 frames (one block) of the overlap. With 39, this shot's last 22 frames (221–242) are held as the next shot's frames **17–38**, so the end still lands on the next shot's frame 38. Frames 204–220 are generated freely. Useful for in-between shots. With it off, the whole overlap is held (204–242 = next shot's 0–38). |
+| `drop_17_frames` | **On by default.** When on, skips the **first** 17 frames (one block) of the overlap. With 39, this shot's last 22 frames (221–242) are held as the next shot's frames **17–38**, so the end still lands on the next shot's frame 38. Frames 204–220 are generated freely. Useful for in-between shots. With it off, the whole overlap is held (204–242 = next shot's 0–38). |
 | `next_shot` (optional) | The next shot's saved latent, e.g. from H3 Motion Context **Load Latent**. If it's empty, the latent passes through unchanged. |
 
 With 243-frame clips and `tail_frames` = 39, the default (`drop_17_frames` off) holds this shot's frames **204–242** as the next shot's frames **0–38**. With the switch on, frames **221–242** are held as the next shot's frames **17–38**. Any existing noise mask, such as an audio mask, is kept. The console prints what was held:
